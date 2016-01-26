@@ -7,10 +7,12 @@ public class Node {
 	
 	public Integer index;
 	public Set<Integer> neighbors;
+	public boolean visited;
 	
 	public Node() {
 		super();
 		neighbors = new HashSet<Integer>();
+		visited = false;
 	}
 
 	public Integer getIndex() {
@@ -31,6 +33,14 @@ public class Node {
 	
 	public void addNeighbor(Integer neighbor){
 		this.neighbors.add(neighbor);
+	}
+
+	public boolean wasVisited() {
+		return visited;
+	}
+
+	public void setVisited(boolean visited) {
+		this.visited = visited;
 	}
 
 	@Override

@@ -1,26 +1,30 @@
 package ufrj.dcc.br.udg.model;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ConnectedGraph {
 	
-	public Set<Node> nodes;
+	public Map<Integer, Node> nodes;
 	
 	public ConnectedGraph(int numberOfNodes){
 		super();
-		nodes = new HashSet<Node>(numberOfNodes);
+		nodes = new HashMap<Integer, Node>(numberOfNodes);
 	}
 
 	public void addNode(Node node){
-		nodes.add(node);
+		nodes.put(node.getIndex(), node);
 	}
 	
-	public Set<Node> getNodes() {
+	public Map<Integer, Node> getNodes() {
 		return nodes;
 	}
+	
+	public Node getNode(Integer id){
+		return nodes.get(id);
+	}
 
-	public void setGraph(Set<Node> nodes) {
+	public void setGraph(Map<Integer, Node> nodes) {
 		this.nodes = nodes;
 	}
 

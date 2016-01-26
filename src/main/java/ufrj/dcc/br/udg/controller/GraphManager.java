@@ -87,7 +87,7 @@ public class GraphManager {
 	}
 	
 	public void printGraph(){
-		for (Node node : connectedGraph.getNodes()) {
+		for (Node node : connectedGraph.getNodes().values()) {
 			System.out.print("Index: " + node.getIndex() + " - Neighbors: ");
 			for (Integer id : node.getNeighbors()) {
 				System.out.print("{" + id + "}");
