@@ -5,20 +5,27 @@ import java.util.Set;
 
 public class ConnectedGraph {
 	
-	public Set<Node> graph;
+	public Set<Node> nodes;
 	
 	public ConnectedGraph(int numberOfNodes){
 		super();
-		graph = new HashSet<Node>(numberOfNodes);
+		nodes = new HashSet<Node>(numberOfNodes);
 	}
 
 	public void addNode(Node node){
-		graph.add(node);
+		nodes.add(node);
 	}
 	
+	public Set<Node> getNodes() {
+		return nodes;
+	}
+
+	public void setGraph(Set<Node> nodes) {
+		this.nodes = nodes;
+	}
+
 	@Override
 	public String toString() {
-		return "ConnectedGraph [graph=" + graph + "]";
+		return "ConnectedGraph [graph=" + nodes + "]";
 	}
-	
 }
