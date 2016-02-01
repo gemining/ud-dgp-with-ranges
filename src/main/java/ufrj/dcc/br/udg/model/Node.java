@@ -5,9 +5,9 @@ import java.util.Set;
 
 public class Node {
 	
-	public Integer index;
-	public Set<Integer> neighbors;
-	public boolean visited;
+	private Integer index;
+	private Set<Integer> neighbors;
+	private boolean visited;
 	
 	public Node() {
 		super();
@@ -41,6 +41,10 @@ public class Node {
 
 	public void setVisited(boolean visited) {
 		this.visited = visited;
+	}
+	
+	public boolean isNeighboor(int neighboorId){
+		return neighbors.contains(neighboorId);
 	}
 
 	@Override

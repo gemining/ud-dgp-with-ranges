@@ -95,4 +95,8 @@ public class GraphManager {
 			System.out.println("");
 		}
 	}
+	
+	public ConnectedGraph getGraph(){
+		return connectedGraph;
+	}
 }

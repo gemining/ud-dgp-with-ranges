@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class ConnectedGraph {
 	
-	public Map<Integer, Node> nodes;
+	private Map<Integer, Node> nodes;
 	
 	public ConnectedGraph(int numberOfNodes){
 		super();
