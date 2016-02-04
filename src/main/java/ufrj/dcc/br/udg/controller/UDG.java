@@ -46,37 +46,57 @@ public class UDG {
 	}
 	
 	public String placeNextNode(ConnectedGraph graph, double epsilon, double epsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Position> placedNodes){
-		Node currNode = graph.getNode(permutedArray[nextNodeIndex]);
+		String result;
 		HashSet<Position> possiblePositions = new HashSet<Position>();
+		HashSet<Position> excludedPositions = new HashSet<Position>();
+		
+		findPositionsOnMeshInsideCircumference(true, 1+epsilonSquared2 , new Position(0, 0), epsilon);
 		
 		// Setting up possible positions
 		for(int k=0; k<nextNodeIndex; k++){
-			Node kNode = graph.getNode(permutedArray[nextNodeIndex]);
+			Node kNode = graph.getNode(permutedArray[k]);
 			if(kNode.isNeighboor(nextNodeIndex)){
-				Position placedPos = placedNodes.get(k);
-				
+				possiblePositions.addAll(findPositionsOnMeshInsideCircumference(true, 1+epsilonSquared2, placedNodes.get(k), epsilon));
 			} else {
-				Position placedPos = placedNodes.get(k);
+				excludedPositions.addAll(findPositionsOnMeshInsideCircumference(false, 1-epsilonSquared2, placedNodes.get(k), epsilon));
 			}
 		}
+		
+		possiblePositions.removeAll(excludedPositions);
 		
 		// Special rules for initial nodes
 		if(nextNodeIndex == 0){
 			possiblePositions.add(new Position(0, 0));
 		} else if(nextNodeIndex == 1){
-			
+			for (Position position : (HashSet<Position>) possiblePositions.clone()) {
+				if(!(position.getX() > 0 && position.getY() == 0))
+					possiblePositions.remove(position);
+			}
 		} else if(nextNodeIndex == 2){
-			
+			for (Position position : (HashSet<Position>) possiblePositions.clone()) {
+				if(!(position.getX() > 0 && position.getY() == 0))
+					possiblePositions.remove(position);
+			}
 		}
+		System.out.println(possiblePositions);
 		
 		boolean foundTrigrah = false;
 		for (Position pos : possiblePositions) {
-			
+			placedNodes.add(pos);
+			if(nextNodeIndex == graph.getNodes().size()){
+				foundTrigrah = true;
+				// isUDGrealization
+			}
+			result = placeNextNode(graph, epsilon, epsilonSquared2, permutedArray, nextNodeIndex+1, placedNodes);
+			if(result.equals(DefaultConstants.CONFIRMED_UDG))
+				return DefaultConstants.CONFIRMED_UDG;
+			if(result.equals(DefaultConstants.TRIGRAPH_ONLY))
+				foundTrigrah = true;
 		}
-		
-		return "TRIGRAPH ONLY";
+		if(!foundTrigrah)
+			return DefaultConstants.NOT_UDG;
+		return DefaultConstants.TRIGRAPH_ONLY;
 	}
-	
 	
 	// Auxiliar Functions
 	public int[] permuteBreathFirst(ConnectedGraph graph, int root){
@@ -104,63 +124,38 @@ public class UDG {
 		return result;
 	}
 	
-	/*
-	public void findPositionOnMesh(boolean isNeighboor){
-		if(isNeighboor){
-			double x = pivotPos.getX() + incrementX;
-			double y = pivotPos.getY();
-			
-			x = pivotPos.getX();
-			y = pivotPos.getY() + incrementY;
-			
-			
-			x = pivotPos.getX();
-			y = pivotPos.getY() + incrementY;
-			
-			
-		} else {
-			
+	public HashSet<Position> findPositionsOnMeshInsideCircumference(boolean isNeighboor, double radius, Position center, double epsilon){
+		HashSet<Position> result = new HashSet<Position>(); 
+		double outerBoudingBoxdelta = radius % epsilon;
+		double innerBoudingBoxDelta = radius * DefaultConstants.SQUARED_TWO;
+		double squaredRadius = Math.pow(radius, 2);
+		
+		// Outer bounding-box
+		for(double x = center.getX() - radius + outerBoudingBoxdelta; x <= center.getX() + radius - outerBoudingBoxdelta; x+=epsilon){
+			for(double y = center.getY() - radius + outerBoudingBoxdelta; y <= center.getY() + radius - outerBoudingBoxdelta; y+=epsilon){
+				// Inner bounding-box + distance check
+				double squaredDistance = getSquaredDistance(center, x, y);
+				if(isInsideBox(center.getX() - innerBoudingBoxDelta, center.getX() + innerBoudingBoxDelta,
+							   center.getY() - innerBoudingBoxDelta, center.getY() + innerBoudingBoxDelta, x,y)){
+					if(!(isNeighboor && squaredDistance == squaredRadius)){
+						result.add(new Position(x, y));
+					}
+				} else if(squaredDistance <= squaredRadius){
+					if(!(isNeighboor && squaredDistance == squaredRadius)){
+						result.add(new Position(x, y));
+					}
+				}
+			}
 		}
+		
+		return result;
 	}
 	
-	public void findPositionsOnMesh(double epsilon, Position pivotPos, double deltaMax, boolean isNeighboor){
-		HashSet<Position> result = new HashSet<Position>();
-		double squaredDeltaMax = Math.pow(deltaMax, 2);
-		
-		if(isNeighboor){
-			int i = 1;
-			while(i > 0){
-				double x = pivotPos.getX() + (i*epsilon);
-				double y = pivotPos.getY();
-				if(getSquaredDistance(pivotPos, x, y) < squaredDeltaMax){
-					result.add(new Position(x, y));
-					result.add(new Position(x*(-1), y));
-					
-					x = pivotPos.getX();
-					y = pivotPos.getY() + (i*epsilon);
-					result.add(new Position(x, y));
-					result.add(new Position(x, y));
-				} else {
-					i = 0;
-				}
-			}
-			
-			
-			i = 1;
-			while(i > 0){
-				double x = pivotPos.getX() + (i*epsilon);
-				double y = pivotPos.getY();
-				if(getSquaredDistance(pivotPos, x, y) < squaredDeltaMax){
-					result.add(new Position(x, y));
-					result.add(new Position(x*(-1), y));
-				} else {
-					i = 0;
-				}
-			}
-		}
-	}*/
+	public boolean isInsideBox(double xMin, double xMax, double yMin, double yMax, double currX, double currY){
+		return currX >= xMin && currX <= xMax && currY >= yMin && currY <= yMax;
+	}
 	
 	public double getSquaredDistance(Position pivotPos, double x, double  y){
-		return (double) Math.pow(pivotPos.getX() - x, 2) +Math.pow(pivotPos.getY() - y, 2);
+		return (double) Math.pow(pivotPos.getX() - x, 2) + Math.pow(pivotPos.getY() - y, 2);
 	}
 }

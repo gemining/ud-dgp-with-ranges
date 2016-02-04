@@ -9,6 +9,6 @@ public class Start {
 		System.out.println("*************************************");
 		
 		UDG udg = UDG.getInstance();
-		udg.udgRecognition(graphManager.getGraph());
+		System.out.println("Result: " + udg.udgRecognition(graphManager.getGraph()));
 	}
 }
