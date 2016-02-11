@@ -6,6 +6,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import javafx.util.Pair;
 import ufrj.dcc.br.udg.model.ConnectedGraph;
 import ufrj.dcc.br.udg.model.DefaultConstants;
 import ufrj.dcc.br.udg.model.Node;
@@ -39,26 +41,24 @@ public class UDG {
 	
 	public String hasDiscreteRealization(ConnectedGraph graph, double epsilon){
 		Map<Integer, Node> nodes = graph.getNodes();
-		ArrayList<Position> placedNodes = new ArrayList<Position>(nodes.size());
+		ArrayList<Pair<Integer,Position>> placedNodes = new ArrayList<Pair<Integer,Position>>(nodes.size());
 		int[] breadthFirstPermutationIds = permuteBreathFirst(graph, 0);
 		
 		return placeNextNode(graph, epsilon, epsilon*DefaultConstants.SQUARED_TWO, breadthFirstPermutationIds, 0, placedNodes);
 	}
 	
-	public String placeNextNode(ConnectedGraph graph, double epsilon, double epsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Position> placedNodes){
+	public String placeNextNode(ConnectedGraph graph, double epsilon, double epsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Pair<Integer,Position>> placedNodes){
 		String result;
 		HashSet<Position> possiblePositions = new HashSet<Position>();
 		HashSet<Position> excludedPositions = new HashSet<Position>();
-		
-		findPositionsOnMeshInsideCircumference(true, 1+epsilonSquared2 , new Position(0, 0), epsilon);
 		
 		// Setting up possible positions
 		for(int k=0; k<nextNodeIndex; k++){
 			Node kNode = graph.getNode(permutedArray[k]);
 			if(kNode.isNeighboor(nextNodeIndex)){
-				possiblePositions.addAll(findPositionsOnMeshInsideCircumference(true, 1+epsilonSquared2, placedNodes.get(k), epsilon));
+				possiblePositions.addAll(findPositionsOnMeshInsideCircumference(true, 1+epsilonSquared2, placedNodes.get(k).getValue(), epsilon));
 			} else {
-				excludedPositions.addAll(findPositionsOnMeshInsideCircumference(false, 1-epsilonSquared2, placedNodes.get(k), epsilon));
+				excludedPositions.addAll(findPositionsOnMeshInsideCircumference(false, 1-epsilonSquared2, placedNodes.get(k).getValue(), epsilon));
 			}
 		}
 		
@@ -74,24 +74,27 @@ public class UDG {
 			}
 		} else if(nextNodeIndex == 2){
 			for (Position position : (HashSet<Position>) possiblePositions.clone()) {
-				if(!(position.getX() > 0 && position.getY() == 0))
+				if(!(position.getY() >= 0))
 					possiblePositions.remove(position);
 			}
 		}
+		
 		System.out.println(possiblePositions);
 		
 		boolean foundTrigrah = false;
 		for (Position pos : possiblePositions) {
-			placedNodes.add(pos);
-			if(nextNodeIndex == graph.getNodes().size()){
+			placedNodes.add(new Pair<Integer,Position>(Integer.valueOf(nextNodeIndex), pos));
+			if(nextNodeIndex == graph.getNodes().size()-1){
 				foundTrigrah = true;
-				// isUDGrealization
+				if(isUDGrealization(graph, epsilon, placedNodes))
+					return DefaultConstants.CONFIRMED_UDG;
+			} else {
+				result = placeNextNode(graph, epsilon, epsilonSquared2, permutedArray, nextNodeIndex+1, placedNodes);
+				if(result.equals(DefaultConstants.CONFIRMED_UDG))
+					return DefaultConstants.CONFIRMED_UDG;
+				if(result.equals(DefaultConstants.TRIGRAPH_ONLY))
+					foundTrigrah = true;
 			}
-			result = placeNextNode(graph, epsilon, epsilonSquared2, permutedArray, nextNodeIndex+1, placedNodes);
-			if(result.equals(DefaultConstants.CONFIRMED_UDG))
-				return DefaultConstants.CONFIRMED_UDG;
-			if(result.equals(DefaultConstants.TRIGRAPH_ONLY))
-				foundTrigrah = true;
 		}
 		if(!foundTrigrah)
 			return DefaultConstants.NOT_UDG;
@@ -157,5 +160,9 @@ public class UDG {
 	
 	public double getSquaredDistance(Position pivotPos, double x, double  y){
 		return (double) Math.pow(pivotPos.getX() - x, 2) + Math.pow(pivotPos.getY() - y, 2);
+	}
+	
+	public boolean isUDGrealization(ConnectedGraph graph, double epsilon, ArrayList<Pair<Integer,Position>> placedNodes){
+		return false;
 	}
 }
