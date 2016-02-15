@@ -33,7 +33,7 @@ public class UDG {
 		while(result.equals(DefaultConstants.TRIGRAPH_ONLY)){
 			result = hasDiscreteRealization(graph, epsilon);
 			if(epsilon < DefaultConstants.MIN_EPSILON)
-				return result;
+				return DefaultConstants.NOT_UDG;
 			epsilon = epsilon/2;
 		}
 		return result;
@@ -79,15 +79,17 @@ public class UDG {
 			}
 		}
 		
-		System.out.println(possiblePositions);
-		
 		boolean foundTrigrah = false;
 		for (Position pos : possiblePositions) {
-			placedNodes.add(new Pair<Integer,Position>(Integer.valueOf(nextNodeIndex), pos));
+			placedNodes.add(new Pair<Integer,Position>(Integer.valueOf(permutedArray[nextNodeIndex]), pos));
 			if(nextNodeIndex == graph.getNodes().size()-1){
 				foundTrigrah = true;
-				if(isUDGrealization(graph, epsilon, placedNodes))
+				if(isUDGrealization(graph, epsilonSquared2, placedNodes)){
+					for(Pair<Integer,Position> position : placedNodes) {
+						System.out.println("Index: " + position.getKey() + " Position: " + position.getValue());
+					}
 					return DefaultConstants.CONFIRMED_UDG;
+				}
 			} else {
 				result = placeNextNode(graph, epsilon, epsilonSquared2, permutedArray, nextNodeIndex+1, placedNodes);
 				if(result.equals(DefaultConstants.CONFIRMED_UDG))
@@ -95,6 +97,7 @@ public class UDG {
 				if(result.equals(DefaultConstants.TRIGRAPH_ONLY))
 					foundTrigrah = true;
 			}
+			placedNodes.remove(nextNodeIndex);
 		}
 		if(!foundTrigrah)
 			return DefaultConstants.NOT_UDG;
@@ -128,14 +131,18 @@ public class UDG {
 	}
 	
 	public HashSet<Position> findPositionsOnMeshInsideCircumference(boolean isNeighboor, double radius, Position center, double epsilon){
-		HashSet<Position> result = new HashSet<Position>(); 
-		double outerBoudingBoxdelta = radius % epsilon;
-		double innerBoudingBoxDelta = radius * DefaultConstants.SQUARED_TWO;
+		HashSet<Position> result = new HashSet<Position>();
+		if(epsilon > radius){
+			result.add(center);
+			return result;
+		}
+		double outerBoudingBoxdelta = epsilon - (radius % epsilon);
+		double innerBoudingBoxDelta = (radius * DefaultConstants.SQUARED_TWO)/2;
 		double squaredRadius = Math.pow(radius, 2);
 		
 		// Outer bounding-box
-		for(double x = center.getX() - radius + outerBoudingBoxdelta; x <= center.getX() + radius - outerBoudingBoxdelta; x+=epsilon){
-			for(double y = center.getY() - radius + outerBoudingBoxdelta; y <= center.getY() + radius - outerBoudingBoxdelta; y+=epsilon){
+		for(double x = center.getX() - radius - outerBoudingBoxdelta; x <= center.getX() + radius + outerBoudingBoxdelta; x+=epsilon){
+			for(double y = center.getY() - radius - outerBoudingBoxdelta; y <= center.getY() + radius + outerBoudingBoxdelta; y+=epsilon){
 				// Inner bounding-box + distance check
 				double squaredDistance = getSquaredDistance(center, x, y);
 				if(isInsideBox(center.getX() - innerBoudingBoxDelta, center.getX() + innerBoudingBoxDelta,
@@ -162,7 +169,20 @@ public class UDG {
 		return (double) Math.pow(pivotPos.getX() - x, 2) + Math.pow(pivotPos.getY() - y, 2);
 	}
 	
-	public boolean isUDGrealization(ConnectedGraph graph, double epsilon, ArrayList<Pair<Integer,Position>> placedNodes){
-		return false;
+	public boolean isUDGrealization(ConnectedGraph graph, double epsilonSquared2, ArrayList<Pair<Integer,Position>> placedNodes){
+		//double lowerTreshold = Math.pow(1 - epsilonSquared2, 2);
+		double higherTreshold = Math.pow(1 + epsilonSquared2, 2);
+		
+		for(int i=0; i<placedNodes.size(); i++){
+			Position curPos = placedNodes.get(i).getValue();
+			for(int k=i+1; k<placedNodes.size(); k++){
+				double squaredDistance = getSquaredDistance(curPos, placedNodes.get(k).getValue().getX(), placedNodes.get(k).getValue().getY());
+				if(squaredDistance < higherTreshold){
+					if(!graph.getNode(placedNodes.get(i).getKey()).isNeighboor(placedNodes.get(k).getKey()))
+						return false;
+				}
+			}
+		}
+		return true;
 	}
 }

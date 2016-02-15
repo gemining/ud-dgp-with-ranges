@@ -8,7 +8,11 @@ public class Start {
 		graphManager.printGraph();
 		System.out.println("*************************************");
 		
+		long startTime = System.currentTimeMillis();
 		UDG udg = UDG.getInstance();
 		System.out.println("Result: " + udg.udgRecognition(graphManager.getGraph()));
+		long stopTime = System.currentTimeMillis();
+	    long elapsedTime = stopTime - startTime;
+	    System.out.println("Total Time : " + elapsedTime + " miliseconds");
 	}
 }
