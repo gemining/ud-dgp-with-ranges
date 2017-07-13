@@ -33,9 +33,10 @@ public class UDG {
 		while(result.equals(DefaultConstants.TRIGRAPH_ONLY)){
 			result = hasDiscreteRealization(graph, epsilon);
 			if(epsilon < DefaultConstants.MIN_EPSILON)
-				return DefaultConstants.NOT_UDG;
-			epsilon = epsilon/2;
+				return DefaultConstants.TRIGRAPH_ONLY;
+			epsilon = refineGranularity(epsilon);
 		}
+		
 		return result;
 	}
 	
@@ -105,6 +106,10 @@ public class UDG {
 	}
 	
 	// Auxiliar Functions
+	public double refineGranularity(double epsilon) {
+		return epsilon/2;
+	}
+	
 	public int[] permuteBreathFirst(ConnectedGraph graph, int root){
 		int[] result = new int[graph.getNodes().size()];
 		int counter = 0;

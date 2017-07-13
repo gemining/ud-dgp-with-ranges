@@ -1,5 +1,8 @@
 package ufrj.dcc.br.udg.controller;
 
+import org.graphstream.graph.implementations.*;
+import org.graphstream.ui.view.Viewer;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -87,14 +90,42 @@ public class GraphManager {
 	}
 	
 	public void printGraph(){
-		System.out.println("Graph:");
+		System.out.println("Graph to Process:");
 		for (Node node : connectedGraph.getNodes().values()) {
-			System.out.print("Index: " + node.getIndex() + " - Neighbors: ");
+			System.out.print("Node Index: " + node.getIndex() + " - Neighbors: ");
 			for (Integer id : node.getNeighbors()) {
 				System.out.print("{" + id + "}");
 			}
 			System.out.println("");
 		}
+		showGraphVisualization();
+	}
+	
+	public void showGraphVisualization() {
+		System.setProperty("org.graphstream.ui.rendererr", "org.graphstream.ui.j2dviewer.J2DGraphRenderer");
+		SingleGraph graph = new SingleGraph("MyGraph");
+		graph.addAttribute("ui.stylesheet", "node { fill-color: blue; text-alignment: under; text-color:red; text-background-mode:plain; text-background-color: white; text-style:bold; text-size:15px; } node:clicked { fill-color: yellow; } ");
+		graph.addAttribute("ui.quality");
+		graph.addAttribute("ui.antialias");
+	
+		
+		for (Node node : connectedGraph.getNodes().values()) {
+			org.graphstream.graph.implementations.SingleNode n = graph.addNode(String.valueOf(node.getIndex()));
+			n.addAttribute("ui.label", "Node " + String.valueOf(node.getIndex()));
+		}
+		
+		for (Node node : connectedGraph.getNodes().values()) {
+			for (Integer id : node.getNeighbors()) {
+				if( node.getIndex() > id ) {
+					String currNodeId = String.valueOf(node.getIndex());
+					String neighborId = String.valueOf(id);
+					graph.addEdge(currNodeId+neighborId, currNodeId, neighborId);
+				}
+			}
+		}
+		
+		Viewer viewer = graph.display();
+		viewer.setCloseFramePolicy(Viewer.CloseFramePolicy.HIDE_ONLY);
 	}
 	
 	public ConnectedGraph getGraph(){
