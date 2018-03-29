@@ -1,2 +1,1 @@
-# ud-dgp-with-ranges
-UFRJ - Final Project
+# udg-with-ranges
