@@ -12,7 +12,7 @@ public class Start {
 		graphManager.printGraph();
 		System.out.println("*************************************");
 		System.out.println("Procesing...");
-		
+
 		long startTime = System.currentTimeMillis();
 		UDG udg = UDG.getInstance();
 		System.out.println("Result: Is UDG? " + udg.udgRecognition(graphManager.getGraph()));

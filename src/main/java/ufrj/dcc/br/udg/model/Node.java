@@ -49,6 +49,6 @@ public class Node {
 
 	@Override
 	public String toString() {
-		return "Node [index=" + index + ", neighborns=" + neighbors + "]";
+		return "Node [index=" + index + ", neighbors=" + neighbors + "]";
 	}
 }

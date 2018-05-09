@@ -1,6 +1,7 @@
 package ufrj.dcc.br.udg.controller;
 
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -28,12 +29,12 @@ public class UDG {
 	// Algorithms
 	public String udgRecognition(ConnectedGraph graph){
 		String result = DefaultConstants.TRIGRAPH_ONLY;
-		double epsilon = DefaultConstants.INITIAL_EPSILON;
+		double epsilon = getDoubleWithPrecisionScale(DefaultConstants.INITIAL_EPSILON);
 		
 		while(result.equals(DefaultConstants.TRIGRAPH_ONLY)){
-			result = hasDiscreteRealization(graph, epsilon);
 			if(epsilon < DefaultConstants.MIN_EPSILON)
 				return DefaultConstants.TRIGRAPH_ONLY;
+			result = hasDiscreteRealization(graph, epsilon);
 			epsilon = refineGranularity(epsilon);
 		}
 		
@@ -44,12 +45,14 @@ public class UDG {
 		Map<Integer, Node> nodes = graph.getNodes();
 		ArrayList<Pair<Integer,Position>> placedNodes = new ArrayList<Pair<Integer,Position>>(nodes.size());
 		int[] breadthFirstPermutationIds = permuteBreathFirst(graph, 0);
-		
+
 		return placeNextNode(graph, epsilon, epsilon*DefaultConstants.SQUARED_TWO, breadthFirstPermutationIds, 0, placedNodes);
 	}
 	
-	public String placeNextNode(ConnectedGraph graph, double epsilon, double epsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Pair<Integer,Position>> placedNodes){
-		String result;
+	public String placeNextNode(ConnectedGraph graph, double unRoundedEpsilon, double unRoundedEpsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Pair<Integer,Position>> placedNodes){
+		double epsilon = getDoubleWithPrecisionScale(unRoundedEpsilon);
+        double epsilonSquared2 = getDoubleWithPrecisionScale(unRoundedEpsilonSquared2);
+	    String result;
 		HashSet<Position> possiblePositions = new HashSet<Position>();
 		HashSet<Position> excludedPositions = new HashSet<Position>();
 		
@@ -107,8 +110,14 @@ public class UDG {
 	
 	// Auxiliar Functions
 	public double refineGranularity(double epsilon) {
-		return epsilon/2;
+		return getDoubleWithPrecisionScale(epsilon/2);
 	}
+
+    public static double getDoubleWithPrecisionScale(double unRounded){
+        return BigDecimal.valueOf(unRounded)
+                .setScale(DefaultConstants.PRECISION_SCALE, BigDecimal.ROUND_HALF_UP)
+                .doubleValue();
+    }
 	
 	public int[] permuteBreathFirst(ConnectedGraph graph, int root){
 		int[] result = new int[graph.getNodes().size()];
@@ -135,35 +144,66 @@ public class UDG {
 		return result;
 	}
 	
-	public HashSet<Position> findPositionsOnMeshInsideCircumference(boolean isNeighboor, double radius, Position center, double epsilon){
-		HashSet<Position> result = new HashSet<Position>();
-		if(epsilon > radius){
-			result.add(center);
-			return result;
-		}
-		double outerBoudingBoxdelta = epsilon - (radius % epsilon);
-		double innerBoudingBoxDelta = (radius * DefaultConstants.SQUARED_TWO)/2;
-		double squaredRadius = Math.pow(radius, 2);
-		
-		// Outer bounding-box
-		for(double x = center.getX() - radius - outerBoudingBoxdelta; x <= center.getX() + radius + outerBoudingBoxdelta; x+=epsilon){
-			for(double y = center.getY() - radius - outerBoudingBoxdelta; y <= center.getY() + radius + outerBoudingBoxdelta; y+=epsilon){
-				// Inner bounding-box + distance check
-				double squaredDistance = getSquaredDistance(center, x, y);
-				if(isInsideBox(center.getX() - innerBoudingBoxDelta, center.getX() + innerBoudingBoxDelta,
-							   center.getY() - innerBoudingBoxDelta, center.getY() + innerBoudingBoxDelta, x,y)){
-					if(!(isNeighboor && squaredDistance == squaredRadius)){
-						result.add(new Position(x, y));
-					}
-				} else if(squaredDistance <= squaredRadius){
-					if(!(isNeighboor && squaredDistance == squaredRadius)){
-						result.add(new Position(x, y));
-					}
-				}
-			}
-		}
-		
-		return result;
+	private HashSet<Position> findPositionsOnMeshInsideCircumference(boolean isNeighboor, double unRoundedRadius, Position center, double unRoundedEpsilon){
+
+	    HashSet<Position> result = new HashSet<Position>();
+        double radius = getDoubleWithPrecisionScale(unRoundedRadius);
+        double squaredRadius = getDoubleWithPrecisionScale(Math.pow(radius, 2));
+        double epsilon = getDoubleWithPrecisionScale(unRoundedEpsilon);
+        double outerBoudingBoxdelta = getDoubleWithPrecisionScale((radius % epsilon));
+
+        // Outer bounding-box
+        for (double x = 0 - radius + outerBoudingBoxdelta; x <= 0 + radius - outerBoudingBoxdelta; x += epsilon) {
+            for (double y = 0 - radius + outerBoudingBoxdelta; y <= 0 + radius - outerBoudingBoxdelta; y += epsilon) {
+                double curX = getDoubleWithPrecisionScale(x);
+                double curY = getDoubleWithPrecisionScale(y);
+
+                // Inner bounding-box + distance check
+                double squaredDistance = getDoubleWithPrecisionScale(getSquaredDistance(center, curX, curY));
+
+                if (isNeighboor) {
+                    if(squaredDistance < squaredRadius){
+                        result.add(new Position(curX, curY));
+                    }
+                } else {
+                    if(squaredDistance <= squaredRadius){
+                        result.add(new Position(curX, curY));
+                    }
+                }
+            }
+        }
+
+	    return result;
+
+//		HashSet<Position> result = new HashSet<Position>();
+//		if(epsilon > radius){
+//			result.add(center);
+//			return result;
+//		}
+//
+//		double outerBoudingBoxdelta = epsilon - (radius % epsilon);
+//		double innerBoudingBoxDelta = (radius * DefaultConstants.SQUARED_TWO)/2;
+//		double squaredRadius = Math.pow(radius, 2);
+//
+//		// Outer bounding-box
+//		for(double x = center.getX() - radius - outerBoudingBoxdelta; x <= center.getX() + radius + outerBoudingBoxdelta; x+=epsilon){
+//			for(double y = center.getY() - radius - outerBoudingBoxdelta; y <= center.getY() + radius + outerBoudingBoxdelta; y+=epsilon){
+//				// Inner bounding-box + distance check
+//				double squaredDistance = getSquaredDistance(center, x, y);
+//				if(isInsideBox(center.getX() - innerBoudingBoxDelta, center.getX() + innerBoudingBoxDelta,
+//							   center.getY() - innerBoudingBoxDelta, center.getY() + innerBoudingBoxDelta, x,y)){
+//					if(!(isNeighboor && squaredDistance == squaredRadius)){
+//						result.add(new Position(x, y));
+//					}
+//				} else if(squaredDistance <= squaredRadius){
+//					if(!(isNeighboor && squaredDistance == squaredRadius)){
+//						result.add(new Position(x, y));
+//					}
+//				}
+//			}
+//		}
+//
+//		return result;
 	}
 	
 	public boolean isInsideBox(double xMin, double xMax, double yMin, double yMax, double currX, double currY){
