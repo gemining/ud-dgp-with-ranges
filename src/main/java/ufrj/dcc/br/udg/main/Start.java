@@ -8,7 +8,7 @@ public class Start {
 	
 	public static void main(String[] args) {
 		GraphManager graphManager = GraphManager.getInstance();
-		graphManager.loadGraphFromFile("src/main/resources/graph.txt");
+		graphManager.loadGraphFromFile("src/main/resources/p5.txt");
 		graphManager.printGraph();
 		System.out.println("*************************************");
 		System.out.println("Procesing...");

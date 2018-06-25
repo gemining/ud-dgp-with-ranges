@@ -17,9 +17,11 @@ import ufrj.dcc.br.udg.model.Position;
 public class UDG {
 	// Singleton
 	private static UDG instance;
+
 	private UDG() {
 		
 	}
+
 	public static synchronized UDG getInstance() { 
 		if (instance == null) 
 			instance = new UDG(); 
@@ -41,7 +43,7 @@ public class UDG {
 		return result;
 	}
 	
-	public String hasDiscreteRealization(ConnectedGraph graph, double epsilon){
+	private String hasDiscreteRealization(ConnectedGraph graph, double epsilon){
 		Map<Integer, Node> nodes = graph.getNodes();
 		ArrayList<Pair<Integer,Position>> placedNodes = new ArrayList<Pair<Integer,Position>>(nodes.size());
 		int[] breadthFirstPermutationIds = permuteBreathFirst(graph, 0);
@@ -49,7 +51,7 @@ public class UDG {
 		return placeNextNode(graph, epsilon, epsilon*DefaultConstants.SQUARED_TWO, breadthFirstPermutationIds, 0, placedNodes);
 	}
 	
-	public String placeNextNode(ConnectedGraph graph, double unRoundedEpsilon, double unRoundedEpsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Pair<Integer,Position>> placedNodes){
+	private String placeNextNode(ConnectedGraph graph, double unRoundedEpsilon, double unRoundedEpsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Pair<Integer,Position>> placedNodes){
 		double epsilon = getDoubleWithPrecisionScale(unRoundedEpsilon);
         double epsilonSquared2 = getDoubleWithPrecisionScale(unRoundedEpsilonSquared2);
 	    String result;
@@ -109,17 +111,17 @@ public class UDG {
 	}
 	
 	// Auxiliar Functions
-	public double refineGranularity(double epsilon) {
+    private double refineGranularity(double epsilon) {
 		return getDoubleWithPrecisionScale(epsilon/2);
 	}
 
-    public static double getDoubleWithPrecisionScale(double unRounded){
+    private static double getDoubleWithPrecisionScale(double unRounded){
         return BigDecimal.valueOf(unRounded)
                 .setScale(DefaultConstants.PRECISION_SCALE, BigDecimal.ROUND_HALF_UP)
                 .doubleValue();
     }
-	
-	public int[] permuteBreathFirst(ConnectedGraph graph, int root){
+
+    private int[] permuteBreathFirst(ConnectedGraph graph, int root){
 		int[] result = new int[graph.getNodes().size()];
 		int counter = 0;
 		List<Node> supportList = new LinkedList<Node>();
@@ -174,60 +176,51 @@ public class UDG {
         }
 
 	    return result;
+	}
 
-//		HashSet<Position> result = new HashSet<Position>();
-//		if(epsilon > radius){
-//			result.add(center);
-//			return result;
-//		}
-//
-//		double outerBoudingBoxdelta = epsilon - (radius % epsilon);
-//		double innerBoudingBoxDelta = (radius * DefaultConstants.SQUARED_TWO)/2;
-//		double squaredRadius = Math.pow(radius, 2);
-//
-//		// Outer bounding-box
-//		for(double x = center.getX() - radius - outerBoudingBoxdelta; x <= center.getX() + radius + outerBoudingBoxdelta; x+=epsilon){
-//			for(double y = center.getY() - radius - outerBoudingBoxdelta; y <= center.getY() + radius + outerBoudingBoxdelta; y+=epsilon){
-//				// Inner bounding-box + distance check
-//				double squaredDistance = getSquaredDistance(center, x, y);
-//				if(isInsideBox(center.getX() - innerBoudingBoxDelta, center.getX() + innerBoudingBoxDelta,
-//							   center.getY() - innerBoudingBoxDelta, center.getY() + innerBoudingBoxDelta, x,y)){
-//					if(!(isNeighboor && squaredDistance == squaredRadius)){
-//						result.add(new Position(x, y));
-//					}
-//				} else if(squaredDistance <= squaredRadius){
-//					if(!(isNeighboor && squaredDistance == squaredRadius)){
-//						result.add(new Position(x, y));
-//					}
-//				}
-//			}
-//		}
-//
-//		return result;
+    private double getSquaredDistance(Position pivotPos, double x, double  y){
+		return Math.pow(pivotPos.getX() - x, 2) + Math.pow(pivotPos.getY() - y, 2);
 	}
-	
-	public boolean isInsideBox(double xMin, double xMax, double yMin, double yMax, double currX, double currY){
-		return currX >= xMin && currX <= xMax && currY >= yMin && currY <= yMax;
-	}
-	
-	public double getSquaredDistance(Position pivotPos, double x, double  y){
-		return (double) Math.pow(pivotPos.getX() - x, 2) + Math.pow(pivotPos.getY() - y, 2);
-	}
-	
-	public boolean isUDGrealization(ConnectedGraph graph, double epsilonSquared2, ArrayList<Pair<Integer,Position>> placedNodes){
-		//double lowerTreshold = Math.pow(1 - epsilonSquared2, 2);
-		double higherTreshold = Math.pow(1 + epsilonSquared2, 2);
-		
-		for(int i=0; i<placedNodes.size(); i++){
-			Position curPos = placedNodes.get(i).getValue();
-			for(int k=i+1; k<placedNodes.size(); k++){
-				double squaredDistance = getSquaredDistance(curPos, placedNodes.get(k).getValue().getX(), placedNodes.get(k).getValue().getY());
-				if(squaredDistance < higherTreshold){
-					if(!graph.getNode(placedNodes.get(i).getKey()).isNeighboor(placedNodes.get(k).getKey()))
+
+    private boolean isUDGrealization(ConnectedGraph graph, double epsilonSquared2, ArrayList<Pair<Integer,Position>> placedNodes){
+	    // checar distancia entre nao vizinhos - distancia tem que ser maior do que 1
+        // checar distancia entre vizinhos a distancia tem que ser menor ou igual a 1
+        // se todo mundo que esta na area cinza for do mesmo tipo(vizinho ou nao vizinho), eu ja achei tb
+
+        double mandatoryTreshold = Math.pow(1 - epsilonSquared2, 2);
+		double forbiddenTreshold = Math.pow(1 + epsilonSquared2, 2);
+		boolean grayAreaNeighboor = false;
+		boolean grayAreaNotNeighboor = false;
+
+        for(int i=0; i<placedNodes.size()-1; i++){
+            Position curPos = placedNodes.get(i).getValue();
+            Node curNode = graph.getNode(placedNodes.get(i).getKey());
+
+            for(int k=i+1; k<placedNodes.size(); k++){
+				Position nextPos = placedNodes.get(k).getValue();
+				Integer nextNodeId = placedNodes.get(k).getKey();
+            	double squaredDistance = getSquaredDistance(curPos, nextPos.getX(), nextPos.getY());
+
+            	if(squaredDistance <= mandatoryTreshold){
+            		 if(!curNode.isNeighboor(nextNodeId)){
+            		 	return false;
+					 }
+				} else if(squaredDistance >= forbiddenTreshold){
+					if(curNode.isNeighboor(nextNodeId)){
 						return false;
+					}
+				} else {
+					if(curNode.isNeighboor(nextNodeId) && !grayAreaNotNeighboor){
+						grayAreaNeighboor = true;
+					} else if (!curNode.isNeighboor(nextNodeId) && !grayAreaNeighboor){
+						grayAreaNotNeighboor = true;
+					} else {
+						return false;
+					}
 				}
-			}
-		}
+            }
+        }
+
 		return true;
 	}
 }
