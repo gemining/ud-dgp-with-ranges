@@ -39,7 +39,7 @@ public class UDG {
 			result = hasDiscreteRealization(graph, epsilon);
 			epsilon = refineGranularity(epsilon);
 		}
-		
+
 		return result;
 	}
 	
@@ -153,10 +153,13 @@ public class UDG {
         double squaredRadius = getDoubleWithPrecisionScale(Math.pow(radius, 2));
         double epsilon = getDoubleWithPrecisionScale(unRoundedEpsilon);
         double outerBoudingBoxdelta = getDoubleWithPrecisionScale((radius % epsilon));
+        double centerX = getDoubleWithPrecisionScale(center.getX());
+		double centerY = getDoubleWithPrecisionScale(center.getY());
+
 
         // Outer bounding-box
-        for (double x = 0 - radius + outerBoudingBoxdelta; x <= 0 + radius - outerBoudingBoxdelta; x += epsilon) {
-            for (double y = 0 - radius + outerBoudingBoxdelta; y <= 0 + radius - outerBoudingBoxdelta; y += epsilon) {
+        for (double x = centerX - radius + outerBoudingBoxdelta; x <= centerX + radius - outerBoudingBoxdelta; x += epsilon) {
+            for (double y = centerY - radius + outerBoudingBoxdelta; y <= centerY + radius - outerBoudingBoxdelta; y += epsilon) {
                 double curX = getDoubleWithPrecisionScale(x);
                 double curY = getDoubleWithPrecisionScale(y);
 
