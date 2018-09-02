@@ -7,61 +7,106 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
+import java.util.concurrent.*;
 import javafx.util.Pair;
-import ufrj.dcc.br.udg.model.ConnectedGraph;
-import ufrj.dcc.br.udg.model.DefaultConstants;
-import ufrj.dcc.br.udg.model.Node;
-import ufrj.dcc.br.udg.model.Position;
+import ufrj.dcc.br.udg.model.*;
 
 public class UDG {
-	// Singleton
-	private static UDG instance;
+    // Singleton
+    private static UDG instance;
+    private CallableUDG callableUDG;
 
-	private UDG() {
-		
-	}
+    private UDG() {
+    }
 
-	public static synchronized UDG getInstance() { 
-		if (instance == null) 
-			instance = new UDG(); 
-		return instance; 
-	}
+    public static synchronized UDG getInstance() {
+        if (instance == null)
+            instance = new UDG();
+        return instance;
+    }
 
-	// Algorithms
-	public String udgRecognition(ConnectedGraph graph){
-		String result = DefaultConstants.TRIGRAPH_ONLY;
-		double epsilon = getDoubleWithPrecisionScale(DefaultConstants.INITIAL_EPSILON);
-		
-		while(result.equals(DefaultConstants.TRIGRAPH_ONLY)){
-			if(epsilon < DefaultConstants.MIN_EPSILON)
-				return DefaultConstants.TRIGRAPH_ONLY;
-			result = hasDiscreteRealization(graph, epsilon);
-			epsilon = refineGranularity(epsilon);
-		}
+    // Algorithms
+    public UDGResult udgRecognition(ConnectedGraph graph, boolean concurrency, int cores) {
+        double epsilon = CallableUDG.getDoubleWithPrecisionScale(DefaultConstants.INITIAL_EPSILON);
+        int[] breadthFirstPermutationIds = CallableUDG.permuteBreathFirst(graph, 0);
+        UDGResult result = new UDGResult(DefaultConstants.TRIGRAPH_ONLY, null, 0);
+        callableUDG = new CallableUDG(graph, epsilon, breadthFirstPermutationIds);
 
-		return result;
-	}
-	
-	private String hasDiscreteRealization(ConnectedGraph graph, double epsilon){
+        if (!concurrency) {
+            System.out.println("Concurrency - OFF");
+            while (result.getResult().equals(DefaultConstants.TRIGRAPH_ONLY)) {
+                if (epsilon < DefaultConstants.MIN_EPSILON)
+                    return result;
+                result = callableUDG.hasDiscreteRealization(graph, epsilon, breadthFirstPermutationIds);
+                epsilon = CallableUDG.refineGranularity(epsilon);
+            }
+        } else {
+            System.out.println("Concurrency - ON");
+            System.out.println("Threads: " + (cores - 1));
+            final ExecutorService pool = Executors.newFixedThreadPool(cores-1);
+            final ExecutorCompletionService<UDGResult> completionService = new ExecutorCompletionService<>(pool);
+
+            for (int i = 0; i < (cores - 1); ++i) {
+                completionService.submit(new CallableUDG(graph, epsilon, breadthFirstPermutationIds));
+                epsilon = CallableUDG.refineGranularity(epsilon);
+            }
+
+            for (int i = 0; i < (cores - 1); ++i) {
+                try {
+                    final Future<UDGResult> future = completionService.take();
+                    final UDGResult content = future.get();
+                    if(!content.getResult().equals(DefaultConstants.TRIGRAPH_ONLY)){
+                        result = content;
+                        break;
+                    } else {
+                        System.out.println("Granularity " + content.getEpsilon() + " ended with TRIGRAPH ONLY");
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getCause());
+                }
+            }
+            pool.shutdown();
+        }
+
+        return result;
+    }
+}
+
+class CallableUDG implements Callable<UDGResult> {
+
+    private double currentEpsilon;
+    private ConnectedGraph currentGraph;
+    private int[] currentBreadthFirstPermutationIds;
+
+    CallableUDG(ConnectedGraph graph, double epsilon, int[] breadthFirstPermutationIds) {
+        this.currentGraph = graph;
+        this.currentEpsilon = epsilon;
+        this.currentBreadthFirstPermutationIds = breadthFirstPermutationIds;
+    }
+
+    @Override
+    public UDGResult call() {
+        return hasDiscreteRealization(currentGraph, currentEpsilon, currentBreadthFirstPermutationIds);
+    }
+
+    public UDGResult hasDiscreteRealization(ConnectedGraph graph, double epsilon, int[] breadthFirstPermutationIds){
 		Map<Integer, Node> nodes = graph.getNodes();
 		ArrayList<Pair<Integer,Position>> placedNodes = new ArrayList<Pair<Integer,Position>>(nodes.size());
-		int[] breadthFirstPermutationIds = permuteBreathFirst(graph, 0);
 
 		return placeNextNode(graph, epsilon, epsilon*DefaultConstants.SQUARED_TWO, breadthFirstPermutationIds, 0, placedNodes);
 	}
 	
-	private String placeNextNode(ConnectedGraph graph, double unRoundedEpsilon, double unRoundedEpsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Pair<Integer,Position>> placedNodes){
+	private UDGResult placeNextNode(ConnectedGraph graph, double unRoundedEpsilon, double unRoundedEpsilonSquared2, int[] permutedArray, int nextNodeIndex, ArrayList<Pair<Integer,Position>> placedNodes){
 		double epsilon = getDoubleWithPrecisionScale(unRoundedEpsilon);
         double epsilonSquared2 = getDoubleWithPrecisionScale(unRoundedEpsilonSquared2);
-	    String result;
+        UDGResult result;
 		HashSet<Position> possiblePositions = new HashSet<Position>();
 		HashSet<Position> excludedPositions = new HashSet<Position>();
-		
+
 		// Setting up possible positions
 		for(int k=0; k<nextNodeIndex; k++){
 			Node kNode = graph.getNode(permutedArray[k]);
-			if(kNode.isNeighboor(nextNodeIndex)){
+			if(kNode.isNeighboor(permutedArray[nextNodeIndex])){
 				possiblePositions.addAll(findPositionsOnMeshInsideCircumference(true, 1+epsilonSquared2, placedNodes.get(k).getValue(), epsilon));
 			} else {
 				excludedPositions.addAll(findPositionsOnMeshInsideCircumference(false, 1-epsilonSquared2, placedNodes.get(k).getValue(), epsilon));
@@ -90,38 +135,39 @@ public class UDG {
 			placedNodes.add(new Pair<Integer,Position>(Integer.valueOf(permutedArray[nextNodeIndex]), pos));
 			if(nextNodeIndex == graph.getNodes().size()-1){
 				foundTrigrah = true;
+
 				if(isUDGrealization(graph, epsilonSquared2, placedNodes)){
-					for(Pair<Integer,Position> position : placedNodes) {
-						System.out.println("Index: " + position.getKey() + " Position: " + position.getValue());
-					}
-					return DefaultConstants.CONFIRMED_UDG;
+					//for(Pair<Integer,Position> position : placedNodes) {
+					//	System.out.println("Index: " + position.getKey() + " Position: " + position.getValue());
+					//}
+					return new UDGResult(DefaultConstants.CONFIRMED_UDG, placedNodes, epsilon);
 				}
 			} else {
 				result = placeNextNode(graph, epsilon, epsilonSquared2, permutedArray, nextNodeIndex+1, placedNodes);
-				if(result.equals(DefaultConstants.CONFIRMED_UDG))
-					return DefaultConstants.CONFIRMED_UDG;
-				if(result.equals(DefaultConstants.TRIGRAPH_ONLY))
+				if(result.getResult().equals(DefaultConstants.CONFIRMED_UDG))
+					return result;
+				if(result.getResult().equals(DefaultConstants.TRIGRAPH_ONLY))
 					foundTrigrah = true;
 			}
 			placedNodes.remove(nextNodeIndex);
 		}
 		if(!foundTrigrah)
-			return DefaultConstants.NOT_UDG;
-		return DefaultConstants.TRIGRAPH_ONLY;
+			return new UDGResult(DefaultConstants.NOT_UDG, null, epsilon);
+		return new UDGResult(DefaultConstants.TRIGRAPH_ONLY, placedNodes, epsilon);
 	}
 	
 	// Auxiliar Functions
-    private double refineGranularity(double epsilon) {
+    public static double refineGranularity(double epsilon) {
 		return getDoubleWithPrecisionScale(epsilon/2);
 	}
 
-    private static double getDoubleWithPrecisionScale(double unRounded){
+    public static double getDoubleWithPrecisionScale(double unRounded){
         return BigDecimal.valueOf(unRounded)
                 .setScale(DefaultConstants.PRECISION_SCALE, BigDecimal.ROUND_HALF_UP)
                 .doubleValue();
     }
 
-    private int[] permuteBreathFirst(ConnectedGraph graph, int root){
+    public static int[] permuteBreathFirst(ConnectedGraph graph, int root){
 		int[] result = new int[graph.getNodes().size()];
 		int counter = 0;
 		List<Node> supportList = new LinkedList<Node>();
@@ -152,14 +198,14 @@ public class UDG {
         double radius = getDoubleWithPrecisionScale(unRoundedRadius);
         double squaredRadius = getDoubleWithPrecisionScale(Math.pow(radius, 2));
         double epsilon = getDoubleWithPrecisionScale(unRoundedEpsilon);
-        double outerBoudingBoxdelta = getDoubleWithPrecisionScale((radius % epsilon));
+        double outerBoudingBoxdelta = getDoubleWithPrecisionScale((squaredRadius % epsilon));
         double centerX = getDoubleWithPrecisionScale(center.getX());
 		double centerY = getDoubleWithPrecisionScale(center.getY());
 
 
         // Outer bounding-box
-        for (double x = centerX - radius + outerBoudingBoxdelta; x <= centerX + radius - outerBoudingBoxdelta; x += epsilon) {
-            for (double y = centerY - radius + outerBoudingBoxdelta; y <= centerY + radius - outerBoudingBoxdelta; y += epsilon) {
+        for (double x = centerX - squaredRadius + outerBoudingBoxdelta; x <= centerX + squaredRadius - outerBoudingBoxdelta; x += epsilon) {
+            for (double y = centerY - squaredRadius + outerBoudingBoxdelta; y <= centerY + squaredRadius - outerBoudingBoxdelta; y += epsilon) {
                 double curX = getDoubleWithPrecisionScale(x);
                 double curY = getDoubleWithPrecisionScale(y);
 
@@ -186,9 +232,6 @@ public class UDG {
 	}
 
     private boolean isUDGrealization(ConnectedGraph graph, double epsilonSquared2, ArrayList<Pair<Integer,Position>> placedNodes){
-	    // checar distancia entre nao vizinhos - distancia tem que ser maior do que 1
-        // checar distancia entre vizinhos a distancia tem que ser menor ou igual a 1
-        // se todo mundo que esta na area cinza for do mesmo tipo(vizinho ou nao vizinho), eu ja achei tb
 
         double mandatoryTreshold = Math.pow(1 - epsilonSquared2, 2);
 		double forbiddenTreshold = Math.pow(1 + epsilonSquared2, 2);
