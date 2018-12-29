@@ -13,7 +13,7 @@ public class Start {
         boolean concurrency = true;
         int cores = Runtime.getRuntime().availableProcessors();
 		GraphManager graphManager = GraphManager.getInstance();
-		graphManager.loadGraphFromFile("src/main/resources/c4.txt");
+		graphManager.loadGraphFromFile("src/main/resources/k5.txt");
 
 		graphManager.printGraph();
 		System.out.println("*************************************");
