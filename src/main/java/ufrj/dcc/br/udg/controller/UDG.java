@@ -137,9 +137,6 @@ class CallableUDG implements Callable<UDGResult> {
 				foundTrigrah = true;
 
 				if(isUDGrealization(graph, epsilonSquared2, placedNodes)){
-					//for(Pair<Integer,Position> position : placedNodes) {
-					//	System.out.println("Index: " + position.getKey() + " Position: " + position.getValue());
-					//}
 					return new UDGResult(DefaultConstants.CONFIRMED_UDG, placedNodes, epsilon);
 				}
 			} else {
